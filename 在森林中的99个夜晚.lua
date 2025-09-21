@@ -106,8 +106,9 @@ local function createESP(target, name)
     label.TextSize = 14
     label.Parent = billboard
 
+    local image
     if name:match("Chest") then
-        local image = Instance.new("ImageLabel")
+        image = Instance.new("ImageLabel")
         image.Position = UDim2.new(0, 20, 0, 40)
         image.Size = UDim2.new(0, 60, 0, 60)
         image.Image = "rbxassetid://18660563116"
@@ -1393,6 +1394,39 @@ Tabs.Home:Button({
     end
 })
 
+-- 首先创建玩家下拉菜单
+local players = game.Players:GetPlayers()
+local playerNames = {}
+for _, player in ipairs(players) do
+    table.insert(playerNames, player.Name)
+end
+
+local playersDropdown = Tabs.Home:Dropdown({
+    Title = "选择要甩飞的玩家",
+    Values = playerNames,
+    Default = playerNames[1] or "",
+    Callback = function(value)
+        -- 可选：当选择改变时更新某些状态
+    end
+})
+
+-- 监听玩家加入/离开以更新下拉菜单
+game.Players.PlayerAdded:Connect(function(player)
+    table.insert(playerNames, player.Name)
+    playersDropdown:UpdateOptions(playerNames)
+end)
+
+game.Players.PlayerRemoving:Connect(function(player)
+    for i, name in ipairs(playerNames) do
+        if name == player.Name then
+            table.remove(playerNames, i)
+            break
+        end
+    end
+    playersDropdown:UpdateOptions(playerNames)
+end)
+
+-- 原按钮代码
 Tabs.Home:Button({
     Title = "甩飞玩家",
     Desc = "将选中的玩家甩飞",
@@ -1422,12 +1456,14 @@ Tabs.Home:Button({
         bodyVelocity.P = 1000
         bodyVelocity.Parent = humanoidRootPart
         
+        -- 施加力一段时间后移除
         task.delay(1, function()
             bodyVelocity:Destroy()
             WindUI:Notify({Title = "成功", Content = "已甩飞玩家 " .. selectedPlayerName, Duration = 3})
         end)
     end
 })
+
 
 local antiWalkFlingConn
 Tabs.Home:Toggle({
@@ -1610,12 +1646,11 @@ Tabs.Home:Slider({
     end
 })
 
-Tabs.Home:Toggle({
-    Title = "自由视角",
-    Desc = "启用/禁用自由视角模式",
-    Default = false,
-    Callback = function(state)
-        toggleFreeCamFeature(state)
+Tabs.Home:Button({
+    Title = "飞行",
+    Desc = "从GitHub加载并执行飞行脚本",
+    Callback = function()
+        pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Guo61/Cat-/refs/heads/main/%E9%A3%9E%E8%A1%8C%E8%84%9A%E6%9C%AC.lua"))() end)
     end
 })
 
@@ -1668,7 +1703,7 @@ local function refreshPlayerDropdown()
     end
 end
 
-local playersDropdown = Tabs.Home:Dropdown({
+local teleportDropdown = Tabs.Home:Dropdown({
     Title = "选择要传送的玩家",
     Values = getPlayerNames(),
 })
@@ -1677,7 +1712,7 @@ Tabs.Home:Button({
     Title = "传送至玩家",
     Desc = "传送到选中的玩家",
     Callback = function()
-        local selectedPlayerName = playersDropdown.Value
+        local selectedPlayerName = teleportDropdown.Value
         if not selectedPlayerName then
             WindUI:Notify({Title = "错误", Content = "未选择玩家", Duration = 3})
             return
@@ -2012,6 +2047,15 @@ Tabs.Home:Button({
     end
 })
 
+local keybind = Tabs.Misc:Keybind({
+    Title = "GUI Toggle",
+    Desc = "按键绑定用于开启/关闭GUI",
+    Value = "RightControl",
+    Callback = function(v)
+        Window:SetToggleKey(Enum.KeyCode[v])
+    end
+})
+
 Tabs.Misc:Button({
     Title = "复制作者QQ",
     Callback = function()
@@ -2043,17 +2087,6 @@ Tabs.Misc:Button({
         })
     end
 })
-
-spawn(function()
-    while true do
-        wait(5)
-        local currentTime = os.date("%H:%M:%S")
-        TimeTag:Set({
-            Title = "当前时间: " .. currentTime,
-            Color = Color3.fromHex("#ff6a30")
-        })
-    end
-end)
 
 Tabs.Misc:Code({
     Title = "感谢游玩",
