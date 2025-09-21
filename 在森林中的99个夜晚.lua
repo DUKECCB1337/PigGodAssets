@@ -3,7 +3,7 @@ local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Guo61/
 local Confirmed = false
 
 WindUI:Popup({
-    Title = "Cat脚盆 v1.10",
+    Title = "PigGod脚盆 v1.10",
     Icon = "rbxassetid://129260712070622",
     IconThemed = true,
     Content = "By:PigGod\n欢迎使用99夜\n没事。继续玩吧。",
@@ -24,7 +24,7 @@ local Window = WindUI:CreateWindow({
     Icon = "rbxassetid://129260712070622",
     IconThemed = true,
     Author = "感谢游玩",
-    Folder = "没事。",
+    Folder = "BBBBB_HUB",
     Size = UDim2.fromOffset(580, 340),
     Transparent = true,
     Theme = "Dark",
