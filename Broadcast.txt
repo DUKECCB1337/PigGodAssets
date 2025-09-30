@@ -1,3 +1,3 @@
-ID=""
-Text=""
+ID="DUKECCB11"
+Text="你好啊。"
 Permission="Developer"
