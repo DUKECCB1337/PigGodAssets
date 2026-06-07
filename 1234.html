@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>网页Cookie管理器</title>
+    <style>
+        body { font-family: "Microsoft YaHei", Arial, sans-serif; margin: 0; padding: 0; background: rgba(0,0,0,0.7); }
+        #cookie-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 900px;
+            max-height: 85vh;
+            overflow: hidden;
+            z-index: 2147483647;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: #1e88e5;
+            color: white;
+            padding: 15px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .close-btn {
+            cursor: pointer;
+            font-size: 24px;
+            opacity: 0.8;
+        }
+        .content {
+            flex: 1;
+            overflow: auto;
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+        }
+        th {
+            background: #f5f5f5;
+            font-weight: 500;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .actions {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-primary { background: #1e88e5; color: white; }
+        .btn-success { background: #43a047; color: white; }
+        .btn-danger { background: #e53935; color: white; }
+        .btn-secondary { background: #78909c; color: white; }
+        .new-row {
+            background: #fff3e0;
+        }
+        .status {
+            margin-left: auto;
+            font-size: 14px;
+            padding: 5px 10px;
+        }
+    </style>
+</head>
+<body>
+<div id="cookie-modal">
+    <div class="header">
+        <span>📋 当前网页 Cookie 管理器</span>
+        <span class="close-btn" onclick="closeModal()">×</span>
+    </div>
+    <div class="content">
+        <table id="cookie-table">
+            <thead>
+                <tr>
+                    <th width="25%">名称 (Name)</th>
+                    <th width="45%">值 (Value)</th>
+                    <th width="15%">操作</th>
+                </tr>
+            </thead>
+            <tbody id="cookie-body"></tbody>
+        </table>
+    </div>
+    <div class="actions">
+        <button class="btn-primary" onclick="addNewRow()">➕ 新增 Cookie</button>
+        <button class="btn-success" onclick="applyAllChanges()">✅ 全部应用并刷新</button>
+        <button class="btn-secondary" onclick="copyAllCookies()">📋 复制全部 Cookies</button>
+        <button class="btn-danger" onclick="clearAllCookies()">🗑 清空所有 Cookies</button>
+        <button class="btn-secondary" onclick="closeModal()">取消</button>
+        <span class="status" id="status"></span>
+    </div>
+</div>
+
+<script>
+// 当前 Cookie 数据
+let cookies = [];
+
+// 解析当前 document.cookie
+function parseCookies() {
+    cookies = [];
+    const cookieStr = document.cookie;
+    if (!cookieStr) return;
+    
+    const items = cookieStr.split(';');
+    items.forEach(item => {
+        const [name, ...valueParts] = item.trim().split('=');
+        if (name) {
+            cookies.push({
+                name: decodeURIComponent(name.trim()),
+                value: decodeURIComponent(valueParts.join('=').trim()),
+                originalValue: decodeURIComponent(valueParts.join('=').trim())
+            });
+        }
+    });
+}
+
+// 渲染表格
+function renderTable() {
+    const tbody = document.getElementById('cookie-body');
+    tbody.innerHTML = '';
+    
+    cookies.forEach((cookie, index) => {
+        const tr = document.createElement('tr');
+        if (cookie.isNew) tr.classList.add('new-row');
+        
+        tr.innerHTML = `
+            <td><input type="text" value="\( {escapeHtml(cookie.name)}" onchange="updateCookie( \){index}, 'name', this.value)"></td>
+            <td><input type="text" value="\( {escapeHtml(cookie.value)}" onchange="updateCookie( \){index}, 'value', this.value)"></td>
+            <td>
+                <button class="btn-danger" style="padding:4px 8px;font-size:12px;" onclick="deleteCookie(${index})">删除</button>
+                <button class="btn-secondary" style="padding:4px 8px;font-size:12px;margin-left:4px;" onclick="copySingleCookie(${index})">复制</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+    
+    if (cookies.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#999;padding:30px;">暂无 Cookie</td></tr>`;
+    }
+}
+
+// 更新 Cookie 数据
+function updateCookie(index, field, value) {
+    if (cookies[index]) {
+        cookies[index][field] = value;
+    }
+}
+
+// 新增一行
+function addNewRow() {
+    cookies.push({
+        name: '',
+        value: '',
+        isNew: true
+    });
+    renderTable();
+}
+
+// 删除
+function deleteCookie(index) {
+    if (confirm('确定要删除这个 Cookie 吗？')) {
+        cookies.splice(index, 1);
+        renderTable();
+    }
+}
+
+// 复制单个
+function copySingleCookie(index) {
+    const c = cookies[index];
+    const str = `\( {c.name}= \){c.value}`;
+    navigator.clipboard.writeText(str).then(() => {
+        showStatus(`已复制: ${c.name}`, 2000);
+    });
+}
+
+// 复制全部
+function copyAllCookies() {
+    const all = cookies.map(c => `\( {c.name}= \){c.value}`).join('; ');
+    navigator.clipboard.writeText(all).then(() => {
+        showStatus('已复制全部 Cookies 到剪贴板', 2500);
+    });
+}
+
+// 应用所有更改
+function applyAllChanges() {
+    // 先删除所有现有 Cookie
+    document.cookie.split(';').forEach(cookie => {
+        const name = cookie.split('=')[0].trim();
+        if (name) {
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+        }
+    });
+    
+    // 设置新 Cookie
+    let successCount = 0;
+    cookies.forEach(cookie => {
+        if (cookie.name && cookie.name.trim() !== '') {
+            try {
+                // 基础设置，路径设为根目录，有效期 1 年
+                document.cookie = `\( {encodeURIComponent(cookie.name)}= \){encodeURIComponent(cookie.value)}; path=/; max-age=31536000`;
+                successCount++;
+            } catch (e) {
+                console.error('设置 Cookie 失败:', cookie.name, e);
+            }
+        }
+    });
+    
+    showStatus(`✅ 已应用 ${successCount} 个 Cookie`, 3000);
+    
+    // 刷新当前页面显示
+    setTimeout(() => {
+        parseCookies();
+        renderTable();
+    }, 800);
+}
+
+// 清空所有
+function clearAllCookies() {
+    if (!confirm('⚠️ 确定要删除当前域名下的所有 Cookie 吗？此操作不可恢复！')) return;
+    
+    document.cookie.split(';').forEach(cookie => {
+        const name = cookie.split('=')[0].trim();
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+        // 尝试不同路径
+        document.cookie = `\( {name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain= \){location.hostname}`;
+    });
+    
+    cookies = [];
+    renderTable();
+    showStatus('🗑 所有 Cookie 已清空', 2500);
+}
+
+function escapeHtml(unsafe) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function showStatus(msg, timeout = 2000) {
+    const statusEl = document.getElementById('status');
+    statusEl.textContent = msg;
+    setTimeout(() => {
+        statusEl.textContent = '';
+    }, timeout);
+}
+
+function closeModal() {
+    const modal = document.getElementById('cookie-modal');
+    modal.style.display = 'none';
+    // 可选：完全移除
+    setTimeout(() => modal.remove(), 300);
+}
+
+// 初始化
+function initCookieManager() {
+    parseCookies();
+    renderTable();
+    
+    // 按 ESC 关闭
+    document.addEventListener('keydown', function(e) {
+        if (e.key === "Escape") {
+            closeModal();
+        }
+    });
+    
+    showStatus('Cookie 管理器已加载', 1500);
+}
+
+// 启动
+initCookieManager();
+</script>
+</body>
+</html>
